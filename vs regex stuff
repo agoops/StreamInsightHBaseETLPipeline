@@ -1,0 +1,4 @@
+vs regex stuff
+(^\b.[^ ]*\b) (.[^ ]*)     finds first two words. replace with $2 $1
+\bnvarchar[\(\)\w]*     any nvarchar(xx)
+\bdecimal[\(\w,]* [\w\)]*    any decimal(xx, xx)

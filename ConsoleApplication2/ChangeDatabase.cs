@@ -9,96 +9,53 @@ using System.Reactive.Linq;
 using System.Data.Linq;
 using System.Collections.Generic;
 using System.Data.SqlClient;
+using System.Reflection;
 
 
 namespace ConsoleApplication2
 {
-    class ChangeDatabase
+    class ChangeDatabase<SourceEvent>
     {
-        public class ChangeDatabaseEvent
-        {
-            //public string Start_Lsn { get; set; }
-            //public string End_Lsn { get; set; }
-            //public string Seqval { get; set; }
-            //public int Operation { get; set; }
-            //public string Update_Mask {get; set; }
-            public int SaleID { get; set; }
-            public string Product { get; set; }
-            public DateTime SaleDate { get; set; }
-            public DateTime TransactionTime { get; set; }
-            public int Operation { get; set; }
-            public int StatusID { get; set; }
-            public decimal SalePrice { get; set; }
+        //public class ChangeDatabaseEvent
+        //{
+        //    //public string Start_Lsn { get; set; }
+        //    //public string End_Lsn { get; set; }
+        //    //public string Seqval { get; set; }
+        //    //public int Operation { get; set; }
+        //    //public string Update_Mask {get; set; }
+        //    public int SaleID { get; set; }
+        //    public string Product { get; set; }
+        //    public DateTime SaleDate { get; set; }
+        //    public DateTime TransactionTime { get; set; }
+        //    public int Operation { get; set; }
+        //    public int StatusID { get; set; }
+        //    public decimal SalePrice { get; set; }
 
+        //}
+
+        private string TABLENAME = "";
+        private string CONNECTION_STRING = "";
+        private string SQL_QUERY = "";
+        private string HBASE_ROW_KEY = "";
+        private static Scripts.RequestHolder requestHolder;
+
+        public ChangeDatabase(string tableName, string key, string connectionString, string sqlQuery){
+            this.TABLENAME = tableName;
+            this.HBASE_ROW_KEY = key;
+            this.CONNECTION_STRING = connectionString;
+            this.SQL_QUERY = sqlQuery;
         }
 
-        public static IEnumerable<ChangeDatabaseEvent> GetEvents(DateTime mostRecentTransactionTime)
+     
+        public void begin(Application myApp)
         {
-            Console.WriteLine("GetEvents() called");
 
-            //define connection string
-            string connString = "Data Source=BRSMBVSQLDEV1;Initial Catalog=CaptureChanges;Persist Security Info=True;User ID=t-ankigu;Password=password1";
+                requestHolder = new Scripts.RequestHolder(this.TABLENAME, 200);
 
-            //create enumerable to hold results
-            IEnumerable<ChangeDatabaseEvent> result;
-
-            //define dataconext object which is used later for translating results to objects
-            DataContext dc = new DataContext(connString);
-
-            //initiate and open connection
-            SqlConnection conn = (SqlConnection)dc.Connection;
-            conn.Open();
-
-            //return all events stored in the SQL Server table
-            string mostRecentTransactionString = mostRecentTransactionTime.ToString("yyyy-MM-dd HH:mm:ss.fff");
-            string sqlCommand = @"SELECT
-                                    tm.tran_end_time [TransactionTime]
-                                    ,[SaleID]
-                                    ,[Product]
-                                    ,[SaleDate]
-                                    ,CAST( StatusID AS int) as StatusID
-                                    ,[SalePrice]
-                                    
-                                    ,[__$operation] [Operation]
-                                FROM [CaptureChanges].[cdc].[dbo_SalesHistory_CT] cdc left join [CaptureChanges].[cdc].[lsn_time_mapping] tm
-	                            on cdc.[__$start_lsn] = tm.start_lsn
-                                WHERE cdc.__$operation <> 3 AND tm.tran_end_time > '" + mostRecentTransactionString + "'";
-
-            SqlCommand command = new SqlCommand(sqlCommand, conn);
-
-            //get the database results and set the connection to close after results are read
-            SqlDataReader dataReader = command.ExecuteReader(System.Data.CommandBehavior.CloseConnection);
-
-            //use "translate" to flip the reader stream to an Enumerable of my custom object type
-            result = dc.Translate<ChangeDatabaseEvent>(dataReader);
-
-            /*
-             * Bug? : When the following block is uncommented and results are printed
-             * to console, the sink output does not show.
-             * */
-
-            //var count = result.ToList<ChangeDatabaseEvent>().Count;
-            //Console.WriteLine(count);
-            //foreach (ChangeDatabaseEvent e in result)
-            //{
-            //    //Console.WriteLine(e.Product + " " + e.SaleDate);
-            //    Console.WriteLine(e.SaleID);
-            //    ++count;
-            //}
-            //Console.WriteLine("Source count: " + count);
-            return result;
-        }
-        public static void begin(Application myApp)
-        {
-                            
-                System.Linq.IQueryable<ChangeDatabaseEvent> qSource = myApp.DefineEnumerable<ChangeDatabaseEvent>(() => GetEvents(DateTime.MinValue));
-                //qSource.AsEnumerable<ChangeDatabaseEvent>().Concat(GetEvents());
-                //qSource.Concat(GetEvents());
-                var qSource2 = myApp.DefineObservable(() => new ObservablePoller(5000));
+                var qSource2 = myApp.DefineObservable(() => new ObservablePoller<SourceEvent>(this.CONNECTION_STRING, this.SQL_QUERY ,5000));
 
 
-                IQStreamable<ChangeDatabaseEvent> tSource = qSource.ToPointStreamable<ChangeDatabaseEvent, ChangeDatabaseEvent>(
-                              e => CreatePoint(e), AdvanceTimeSettings.IncreasingStartTime);
+                
                 
                 //tSource.Deploy("serverSource");
 
@@ -107,20 +64,19 @@ namespace ConsoleApplication2
                 
                 // DEFINE a simple observer SINK (writes the value to the server console)
                 //var mySink = myApp.DefineObserver(() => Observer.Create<ChangeDatabaseEvent>(x => Console.WriteLine("sinkserver: " + x.Product + " SaleDate:" + x.SaleDate + " TransTime:" + x.TransactionTime)));
-                var mySink = myApp.DefineObserver(() => Observer.Create<ChangeDatabaseEvent>(x =>Sink(x)));
-                var mySink2 = myApp.DefineObserver(() => Observer.Create<ChangeDatabaseEvent>(x =>Sink(x)));
+                string hbase_row_key = this.HBASE_ROW_KEY;
+                var mySink2 = myApp.DefineObserver(() => Observer.Create<SourceEvent>(x => Sink<SourceEvent>(x, hbase_row_key)));
+
                 // DEPLOY the sink to the server for clients to use
                 //mySink.Deploy("serverSink");
 
                 // Compose a QUERY over the source (return every even-numbered event)
-                var myQuery = from e in tSource
-                              select e;
-
+            
                 var myQuery2 = from e in streamable
                                select e;
                  
                 // BIND the query to the sink and RUN it
-                using (IDisposable proc = myQuery.Bind<ChangeDatabaseEvent>(mySink).Run("serverProcess"))
+                using (IDisposable proc = myQuery2.Bind<SourceEvent>(mySink2).Run(this.TABLENAME+ "Process"))
                 {
                     // Wait for the user stops the server
                     //IDisposable proc2 = myQuery2.ToObservable().Subscribe(Console.WriteLine);
@@ -134,51 +90,52 @@ namespace ConsoleApplication2
                 Console.ReadLine();
         }
 
-        private static PointEvent<ChangeDatabaseEvent> CreatePoint(ChangeDatabaseEvent e)
-        {
-            //Console.WriteLine("source " + e.Product + " " + e.SaleDate);
-            //Console.WriteLine(e.SaleID);
-            return PointEvent.CreateInsert<ChangeDatabaseEvent>(DateTime.Now, e);
-        }
+        //private static PointEvent<ChangeDatabaseEvent> CreatePoint(ChangeDatabaseEvent e)
+        //{
+        //    //Console.WriteLine("source " + e.Product + " " + e.SaleDate);
+        //    //Console.WriteLine(e.SaleID);
+        //    return PointEvent.CreateInsert<ChangeDatabaseEvent>(DateTime.Now, e);
+        //}
 
         
 
-        private static void Sink(ChangeDatabaseEvent x)
+        private static void Sink<SourceEvent> (SourceEvent x, string hbase_row_key)
         {
-            Console.WriteLine(@"sinkserver: "
-                + x.SaleID + " "
-                + x.Product
-                + " SaleDate:" + x.SaleDate
-                + " TransTime:" + x.TransactionTime
-                + " Operation: " + x.Operation
-                + " StatusID: " + x.StatusID
-                + " SalePrice: " + x.SalePrice
-                );
+            SourceEvent rowevent = x;
+            PropertyInfo[] props = rowevent.GetType().GetProperties();
 
+            List<Scripts.CellElement> cells = new List<Scripts.CellElement>();
+            string key = "";
 
-            ////DELETE
-            //if (x.Operation == 1)
-            //{
+            foreach (PropertyInfo pi in props)
+            {
+                //skip the PrimaryKey which acts as key in HBase
+                if (pi.Name == hbase_row_key)
+                {
+                    key = Scripts.ToBase64(pi.GetValue(rowevent, null).ToString());
+                    continue;
+                }
 
-            //}
-            ////INSERT or UPDATE(new values)
-            //else if (x.Operation == 2 || x.Operation == 4)
-            //{
-            //    List<Scripts.CellElement> cells = new List<Scripts.CellElement>();
-            //    cells.Add(new Scripts.CellElement() { column = sinkProduct, value = x.Product.ToString() });
-            //    cells.Add(new Scripts.CellElement() { column = sinkSaleDate, value = x.SaleDate.ToString() });
-            //    cells.Add(new Scripts.CellElement() { column = sinkStatusID, value = x.StatusID.ToString() });
+                // if have Byte[], need to convert to string
+                if (pi.PropertyType == typeof(Byte[]))
+                {
+                    string byteCol = Scripts.ToBase64("cf:" + pi.Name);
+                    string byteVal = Scripts.ToBase64(pi.GetValue(rowevent, null) == null ? "NULL" : BitConverter.ToString((Byte[])pi.GetValue(rowevent, null)));
+                    Scripts.CellElement byteCell = new Scripts.CellElement { column = byteCol, value = byteVal };
+                    cells.Add(byteCell);
+                    continue;
+                }
 
-            //    cells.Add(new Scripts.CellElement() { column = sinkSalePrice, value = x.SalePrice.ToString() });
+                //set up cellelement with column and value
+                string col = Scripts.ToBase64("cf:" + pi.Name);
+                string val = Scripts.ToBase64(pi.GetValue(rowevent, null) == null ? "NULL" : pi.GetValue(rowevent, null).ToString());
+                Scripts.CellElement cell = new Scripts.CellElement { column = col, value = val };
+                cells.Add(cell);
+            };
 
-            //    Scripts.RowElement row = new Scripts.RowElement() { key = x.SaleID.ToString(), Cell = cells };
+            Scripts.RowElement row = new Scripts.RowElement() { key = key, Cell = cells };
 
-            //    List<Scripts.RowElement> allRows = new List<Scripts.RowElement>();
-            //    allRows.Add(row);
-
-            //    Scripts.RowBody rowBody = new Scripts.RowBody() { Row = allRows };
-            //    Scripts.putRowBody(x.SaleID.ToString(), rowBody);
-            //}
+            requestHolder.addRow(row);
           
         }
 

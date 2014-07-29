@@ -70,12 +70,12 @@ namespace ConsoleApplication2
                 Task t1 = new Task(opportunityAction, "alpha");
                 t1.Start();
 
-                Action<object> activityAction = (object obj) =>
-                {
-                    activitySetup.begin(myApp, 200, "activityProcess");
-                };
-                Task t2 = new Task(activityAction, "alpha");
-                t2.Start();
+                //Action<object> activityAction = (object obj) =>
+                //{
+                //    activitySetup.begin(myApp, 200, "activityProcess");
+                //};
+                //Task t2 = new Task(activityAction, "alpha");
+                //t2.Start();
 
                 //SetUpDatabase.begin(myApp);
                 //ChangeDatabase.begin(myApp);
