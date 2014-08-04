@@ -11,6 +11,14 @@ namespace ConsoleApplication2
         public static string SALES_HISTORY = "select SaleID, Product, SaleDate, CAST( StatusID AS int) as StatusID, SalePrice from [CaptureChanges].[dbo].[SalesHistory]";
         public static string CAPTURE_CHANGES_CONN = "Data Source=BRSMBVSQLDEV1;Initial Catalog=CaptureChanges;Persist Security Info=True;User ID=t-ankigu;Password=password1";
         public static string TIGER_REPL_CONN = "Data Source=BRSMBVSQLDEV1;Initial Catalog=TigerRepl;Persist Security Info=True;User ID=t-ankigu;Password=password1";
+        public static string OWNER_BASE = @"SELECT
+                                               [OwnerIdType]
+                                              ,[OwnerId]
+                                              ,[Name]
+                                              ,[VersionNumber]
+                                              ,[YomiName]
+                                          FROM [dbo].[OwnerBase]";
+                                                
         public static string OPPORTUNITY_BASE = @"SELECT 
                                                    [OpportunityId]
                                                   ,[PriceLevelId]
@@ -391,11 +399,27 @@ namespace ConsoleApplication2
                                                   ,[SendersAccountObjectTypeCode]
                                                   ,[EmailSenderYomiName]
                                                   ,[SendersAccountYomiName]
-                                              FROM [dbo].[ActivityPointerBase]
-                                              where [ActivityId] not in (select top 1262000 ActivityId from dbo.ActivityPointerBase)";
+                                              FROM [dbo].[ActivityPointerBase] 
+                                              where [ActivityId] not in (select top 324000 ActivityId from dbo.ActivityPointerBase)";
         //                                                  ,[Description] 
 
         public static string PHONE_CALL_BASE = "SELECT * FROM [dbo].[PhoneCallBase]";
+        public static string PHONE_CALL_BASE_CHANGE = @"SELECT
+                                                            [ActivityId],
+                                                            [mbs_phonestatus],
+                                                            [mbs_gsxactivityid],
+                                                            [mcs_dialstarttime],
+                                                            [mcs_duration],
+                                                            [mcs_HoldTime],
+                                                            [__$operation] [Operation],
+                                                            [tran_end_time] [TransactionTime]
+                                        FROM [cdc].[dbo_PhoneCallBase_CT] cdc left join [cdc].[lsn_time_mapping] tm
+        	                            on cdc.[__$start_lsn] = tm.start_lsn
+                                        WHERE cdc.__$operation <> 3 AND tm.tran_end_time > ";
+
+  
+
+
         public static string ACCOUNT_BASE = @"SELECT [AccountId] 
                                       ,[AccountCategoryCode] 
                                       ,[TerritoryId] 

@@ -50,9 +50,7 @@ namespace ConsoleApplication2
                 
             }
         }
-        private static string CLUSTER_URL = "https://crmhbasecluster.azurehdinsight.net/hbaserest/";
-        //private static string SALES_HISTORY = "SalesHistory";
-        //private static string SALES_HISTORY_URL = CLUSTER_URL + "/" + SALES_HISTORY;
+        private static string CLUSTER_URL = "https://crmhbasecluster2.azurehdinsight.net/hbaserest/";
 
         //sampletable/" + key;
         public static void putRowBody(string tableName, string key, Scripts.RowBody rowBody, int numRows)
@@ -77,7 +75,7 @@ namespace ConsoleApplication2
             var request = (HttpWebRequest)WebRequest.Create(uri);
             request.Method = "PUT";
             request.ContentType = "application/json";
-            request.Credentials = new NetworkCredential("admin", "Password11)");
+            request.Credentials = new NetworkCredential("admin", "Turtledive11)");
 
             byte[] byte1 = encoding.GetBytes(jsonBody);
             request.ContentLength = byte1.Length;

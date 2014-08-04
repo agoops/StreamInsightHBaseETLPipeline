@@ -14,7 +14,7 @@ using System.Reflection;
 
 namespace ConsoleApplication2
 {
-    class ChangeDatabase<SourceEvent>
+    class ChangeDatabase<T> where T : ConsoleApplication2.ChangeEvent
     {
         //public class ChangeDatabaseEvent
         //{
@@ -47,28 +47,24 @@ namespace ConsoleApplication2
         }
 
      
-        public void begin(Application myApp)
+        public void begin(Application myApp, string processName)
         {
 
-                requestHolder = new Scripts.RequestHolder(this.TABLENAME, 200);
+                string conn_string = this.CONNECTION_STRING;
+                string sql_query = this.SQL_QUERY;
+                System.Reactive.Linq.IQbservable<T> qSource2 = myApp.DefineObservable<T>(() => new ObservablePoller<T>(conn_string, sql_query, 5000));
 
-                var qSource2 = myApp.DefineObservable(() => new ObservablePoller<SourceEvent>(this.CONNECTION_STRING, this.SQL_QUERY ,5000));
+                var streamable = qSource2.ToPointStreamable(x => PointEvent.CreateInsert(DateTime.Now, x), AdvanceTimeSettings.IncreasingStartTime);
 
+                requestHolder = new Scripts.RequestHolder(this.TABLENAME, 500);
+                requestHolder.rowBody = new Scripts.RowBody();
+                requestHolder.rowBody.Row = new List<Scripts.RowElement>();
 
-                
-                
-                //tSource.Deploy("serverSource");
-
-
-                var streamable = qSource2.ToPointStreamable(x => PointEvent.CreateInsert(DateTime.Now, x), AdvanceTimeSettings.StrictlyIncreasingStartTime);
-                
                 // DEFINE a simple observer SINK (writes the value to the server console)
                 //var mySink = myApp.DefineObserver(() => Observer.Create<ChangeDatabaseEvent>(x => Console.WriteLine("sinkserver: " + x.Product + " SaleDate:" + x.SaleDate + " TransTime:" + x.TransactionTime)));
-                string hbase_row_key = this.HBASE_ROW_KEY;
-                var mySink2 = myApp.DefineObserver(() => Observer.Create<SourceEvent>(x => Sink<SourceEvent>(x, hbase_row_key)));
+                string hbase_row_key = this.HBASE_ROW_KEY.Clone().ToString();
+                var mySink2 = myApp.DefineObserver(() => Observer.Create<T>(x => Sink<T>(x, hbase_row_key)));
 
-                // DEPLOY the sink to the server for clients to use
-                //mySink.Deploy("serverSink");
 
                 // Compose a QUERY over the source (return every even-numbered event)
             
@@ -76,11 +72,11 @@ namespace ConsoleApplication2
                                select e;
                  
                 // BIND the query to the sink and RUN it
-                using (IDisposable proc = myQuery2.Bind<SourceEvent>(mySink2).Run(this.TABLENAME+ "Process"))
+                using (IDisposable proc = myQuery2.Bind<T>(mySink2).Run("fdfdf"))
                 {
                     // Wait for the user stops the server
                     //IDisposable proc2 = myQuery2.ToObservable().Subscribe(Console.WriteLine);
-                    myQuery2.Bind(mySink2).Run("Server2");
+                    //myQuery2.Bind(mySink2).Run("Server2");
                     Console.WriteLine("----------------------------------------------------------------");
                     Console.WriteLine("MyStreamInsightServer is running, press Enter to stop the server");
                     Console.WriteLine("----------------------------------------------------------------");
@@ -98,10 +94,11 @@ namespace ConsoleApplication2
         //}
 
         
-
-        private static void Sink<SourceEvent> (SourceEvent x, string hbase_row_key)
+        private static int hitCount = 0;
+        private static void Sink<T> (T x, string hbase_row_key)
         {
-            SourceEvent rowevent = x;
+            Console.WriteLine("Sink hit count: " + hitCount++);
+            ChangeEvent rowevent = (ChangeEvent)(object)x;
             PropertyInfo[] props = rowevent.GetType().GetProperties();
 
             List<Scripts.CellElement> cells = new List<Scripts.CellElement>();
@@ -112,6 +109,7 @@ namespace ConsoleApplication2
                 //skip the PrimaryKey which acts as key in HBase
                 if (pi.Name == hbase_row_key)
                 {
+                    Console.WriteLine("key: " + pi.GetValue(rowevent, null).ToString());
                     key = Scripts.ToBase64(pi.GetValue(rowevent, null).ToString());
                     continue;
                 }
@@ -127,8 +125,16 @@ namespace ConsoleApplication2
                 }
 
                 //set up cellelement with column and value
+                
+
                 string col = Scripts.ToBase64("cf:" + pi.Name);
-                string val = Scripts.ToBase64(pi.GetValue(rowevent, null) == null ? "NULL" : pi.GetValue(rowevent, null).ToString());
+                string val = pi.GetValue(rowevent, null) == null ? "NULL" : pi.GetValue(rowevent, null).ToString();
+
+                Console.WriteLine("col: " + pi.Name);
+                Console.WriteLine("val: " + val);
+
+                val = Scripts.ToBase64(val);
+                
                 Scripts.CellElement cell = new Scripts.CellElement { column = col, value = val };
                 cells.Add(cell);
             };

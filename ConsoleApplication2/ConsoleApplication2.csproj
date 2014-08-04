@@ -62,7 +62,10 @@
     <Compile Include="AccountBaseEventSrc.cs" />
     <Compile Include="ActivityPointerBaseEventSrc.cs" />
     <Compile Include="ChangeDatabase.cs" />
+    <Compile Include="ChangeEvent.cs" />
     <Compile Include="OpportunityBaseEventSrc.cs" />
+    <Compile Include="OwnerBaseEventSrc.cs" />
+    <Compile Include="PhoneBaseEventChange.cs" />
     <Compile Include="PhoneBaseEventSrc.cs" />
     <Compile Include="SourceEvent.cs" />
     <Compile Include="ObservablePoller.cs" />
