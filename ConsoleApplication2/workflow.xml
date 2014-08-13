@@ -1,0 +1,31 @@
+
+<workflow-app name="ooziewf" xmlns="uri:oozie:workflow:0.2">
+
+    <start to = "RunJoinActivityPhoneQuery"/> 
+
+
+    <action name="RunJoinActivityPhoneQuery">
+        <hive xmlns="uri:oozie:hive-action:0.2">
+            <job-tracker>jobtrackerhost:9010</job-tracker>
+            <name-node>wasb://crmhbasecluster2@crmhbasestorage.blob.core.windows.net</name-node>
+            <configuration>
+                <property>
+                    <name>mapred.job.queue.name</name>
+                    <value>default</value>
+                </property>
+            </configuration>
+            <script>wasb://crmhbasecluster2@crmhbasestorage.blob.core.windows.net/oozie/join_activity_phone.hql</script>
+        </hive>
+        <ok to="end"/>
+        <error to="fail"/>
+    </action>
+
+     
+
+    <kill name="fail">
+        <message>Job failed, error message[${wf:errorMessage(wf:lastErrorNode())}] </message>
+    </kill>
+
+
+   <end name="end"/>
+</workflow-app>
