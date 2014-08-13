@@ -399,8 +399,7 @@ namespace ConsoleApplication2
                                                   ,[SendersAccountObjectTypeCode]
                                                   ,[EmailSenderYomiName]
                                                   ,[SendersAccountYomiName]
-                                              FROM [dbo].[ActivityPointerBase] 
-                                              where [ActivityId] not in (select top 951000 ActivityId from dbo.ActivityPointerBase)";
+                                              FROM [dbo].[ActivityPointerBase]";
         //                                                  ,[Description] 
 
         public static string PHONE_CALL_BASE = "SELECT * FROM [dbo].[PhoneCallBase]";

@@ -121,16 +121,7 @@ namespace ConsoleApplication2
 
         private static void Sink<SourceEvent>(SourceEvent x, string HBASE_ROW_KEY)
         {
-            //AccountBaseEventSrc rowevent = (AccountBaseEventSrc)(object)x;
-            
-            //Console.WriteLine("sinkserver: " + rowevent.AccountId);
-            //PropertyInfo[] props = rowevent.GetType().GetProperties();
-            //foreach (PropertyInfo p in props)
-            //{
-            //    Console.WriteLine(p.Name + "\t" + (p.GetValue(rowevent, null) == null ? "NULL" : p.GetValue(rowevent, null)));
-            //}
-            //Console.WriteLine("VersionNumber: " + BitConverter.ToString(rowevent.VersionNumber));
-
+ 
             SourceEvent rowevent = x;
             PropertyInfo[] props = rowevent.GetType().GetProperties();
 

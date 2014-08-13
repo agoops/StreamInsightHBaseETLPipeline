@@ -48,11 +48,6 @@ namespace ConsoleApplication2
             foreach (T e in results)
             {
                 this.mostRecentTime = e.getTransactionTime();
-                //e.getTransactionTime();
-                //this.mostRecentTime = e.getTransactionTime();
-                //var sqlFormattedDate = mostRecentTime.ToString("yyyy-MM-dd HH:mm:ss.fff");
-                //Console.WriteLine(sqlFormattedDate);
-
                 OnNext(e);
 
             }

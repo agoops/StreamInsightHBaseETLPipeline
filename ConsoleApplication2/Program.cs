@@ -16,18 +16,11 @@ using System.Threading.Tasks;
 
 namespace ConsoleApplication2
 
-    /* This example:
-     * creates an embedded server instance and makes it available to other clients
-     * defines, deploys, binds, and runs a simple source, query, and sink
-     * waits for the user to stop the server
-     */
 {
   
    
     class Program
     {
-
-
 
         static void Main(string[] args)
         {

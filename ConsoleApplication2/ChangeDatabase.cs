@@ -84,7 +84,7 @@ namespace ConsoleApplication2
                 //skip the PrimaryKey which acts as key in HBase
                 if (pi.Name == hbase_row_key)
                 {
-                    Console.WriteLine("key: " + pi.GetValue(rowevent, null).ToString());
+                    //Console.WriteLine("key: " + pi.GetValue(rowevent, null).ToString());
                     key = RequestManager.ToBase64(pi.GetValue(rowevent, null).ToString());
                     continue;
                 }
@@ -103,8 +103,8 @@ namespace ConsoleApplication2
                 string col = RequestManager.ToBase64("cf:" + pi.Name);
                 string val = pi.GetValue(rowevent, null) == null ? "NULL" : pi.GetValue(rowevent, null).ToString();
 
-                Console.WriteLine("col: " + pi.Name);
-                Console.WriteLine("val: " + val);
+                //Console.WriteLine("col: " + pi.Name);
+                //Console.WriteLine("val: " + val);
 
                 val = RequestManager.ToBase64(val);
                 
